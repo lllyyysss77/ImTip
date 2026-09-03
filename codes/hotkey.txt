@@ -133,25 +133,7 @@ superHotkey.loadTable({
 		thread.invoke( 
 			function(selectedText){ 
 				import winex.tooltip;
-				import web.rest.tencentCloud;
-		
-				var tmtConfig = {
-    				secretId = "SecretId"; // 替换为你的 SecretId
-    				secretKey = "SecretKey"; // 替换为你的 SecretKey
-    				region = "ap-guangzhou"; // 接口地域
-    				service = "tmt"; // 机器翻译服务标识
-    				version = "2018-03-21"; // 接口版本号
-    				action = "TextTranslate"; // 接口动作
-				}
-				
-				if(tmtConfig.secretId=="SecretId"){
-					winex.tooltip.balloon("请在 ImTip 中点击“编辑热键”，在热键配置中找到 `tencentConfig` 并按说明设置参数。");
-					thread.delay(10000)
-					return;
-				}
-				
-				var client = web.rest.tencentCloud(tmtConfig);
-				var tmtApi = client.api("https://tmt.tencentcloudapi.com");
+				import web.rest.jsonClient;
 				
 				/*
 				检测文本是否以拉丁字母为主（例如英文）。
@@ -161,22 +143,34 @@ superHotkey.loadTable({
 				而 2 个汉字的 UTF-8 编码一般为 6 个字节，
 				则以此为判断中英文占比的分界线，得出计算方法如下：
 				*/
-				var latinLike = lambda(str) !..string.find(str,":") || (..string.len(str) > #str/1.5);
+				..string.latinLike = lambda(str) !..string.find(str,":") || (..string.len(str) > #str/1.5);
 	
-				var result, err = tmtApi.post({
-    				"SourceText": selectedText,
-    				"Source": "auto", // 自动检测源语言
-    				"Target": latinLike(selectedText) ? "zh" : "en", 
-    				"ProjectId": 0    // 项目 ID,默认填 0
-				});
+				var edgeClient = web.rest.jsonClient();
+				var edgeApi = edgeClient.api("https://edge.microsoft.com");
+				var edgeTranslate = function(str){
+					var ret, err = edgeApi.translate.translatetext.post([str], {
+						from="";
+						isEnterpriseClient="false";
+						to=..string.latinLike(str)?"zh-Hans":"en-US"
+					});	
+					
+					if(ret[[1]]){
+						ret = table.map(ret,lambda(v,k) v[["translations"]][[1]][["text"]]) 
+						return ret[1]
+					}
+					
+					return null,err;
+				}
+			
 				
-				if(result){
-    				var resp = result[["Response"]];
+				var result, err = edgeTranslate(selectedText);
+				
+				if(result){ 
 				
     				// 检查是否有业务错误
     				if(!resp[["Error"]]){ 
         				import winex.tooltip;
-        				winex.tooltip.balloon(resp[["TargetText"]]);
+        				winex.tooltip.balloon(result);
 						thread.delay(5000)
     				}
 				}

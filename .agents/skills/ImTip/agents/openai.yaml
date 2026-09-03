@@ -1,0 +1,6 @@
+interface:
+  display_name: "ImTip"
+  short_description: "Repo-specific patterns and workflows for ImTip"
+  default_prompt: "Use the ImTip repo skill to follow existing architecture, testing, and workflow conventions."
+policy:
+  allow_implicit_invocation: true
